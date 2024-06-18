@@ -58,8 +58,8 @@ parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
 localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
 localparam int unsigned EW_DW     = $clog2(ECC_CHUNK_SIZE)+2;
-localparam int unsigned EW_RQMETA = $clog2(AW+DW/8+UW+1)+2;
-localparam int unsigned EW_RSMETA = $clog2(UW+1)+2;
+localparam int unsigned EW_RQMETA = (UW > 1) ? $clog2(AW+DW/8+UW+1)+2 : $clog2(AW+DW/8+1)+2;
+localparam int unsigned EW_RSMETA = (UW > 1) ? $clog2(UW)+2 : 0;
 
 logic [NumStreamSources-1:0][ECC_N_CHUNK-1:0] r_data_single_err;
 logic [NumStreamSources-1:0][ECC_N_CHUNK-1:0] r_data_multi_err;
@@ -401,7 +401,10 @@ for (genvar i = 0; i < NumStreamSources; i++) begin: gen_tcdm2stream
         .out        ( { post_castin_r_ecc[ii*EW_DW+:EW_DW], tcdm_cast[i].r_data[ii*ECC_CHUNK_SIZE+:ECC_CHUNK_SIZE]} )
       );
     end
-    assign tcdm_cast[i].r_ecc= { load_fifo_q[i].r_ecc[EW-1:ECC_N_CHUNK*EW_DW], post_castin_r_ecc, load_fifo_q[i].r_ecc[EW_RSMETA-1:0]};
+    if (UW > 1)
+      assign tcdm_cast[i].r_ecc = { load_fifo_q[i].r_ecc[EW-1:ECC_N_CHUNK*EW_DW], post_castin_r_ecc, load_fifo_q[i].r_ecc[EW_RSMETA-1:0]};
+    else
+      assign tcdm_cast[i].r_ecc = { load_fifo_q[i].r_ecc[EW-1:ECC_N_CHUNK*EW_DW], post_castin_r_ecc };
   end else begin
     assign tcdm_cast[i].r_data = post_castin_r_data[i];
     assign tcdm_cast[i].r_ecc  = load_fifo_q[i].r_ecc;
